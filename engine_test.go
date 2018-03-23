@@ -14,7 +14,7 @@ func TestCreateEngine(t *testing.T) {
 	lagoon, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/lagoon.yaml")
 	assert.Nil(t, e) // no error occurred
 
-	env := lagoon.GetEnvironment()
+	env := lagoon.Environment()
 	assert.Equal(t, "testEnvironment", env.GetName())                               // importing file have has precedence
 	assert.Equal(t, "This is my awesome Lagoon environment.", env.GetDescription()) // imported files are merged
 	assert.Equal(t, []string{"tag1", "tag2"}, env.GetLabels().AsStrings())
@@ -25,7 +25,7 @@ func TestCreateEngineComplete(t *testing.T) {
 	lagoon, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/complete_descriptor.yaml")
 	assert.Nil(t, e)
 
-	env := lagoon.GetEnvironment()
+	env := lagoon.Environment()
 	assert.Equal(t, "name_value", env.GetName())
 	assert.Equal(t, "description_value", env.GetDescription())
 	assert.Equal(t, "baselocation_value", env.GetBaseLocation())
@@ -276,7 +276,7 @@ func TestSerialization(t *testing.T) {
 	assert.Nil(t, e)
 
 	// Content deserialization
-	content1, e := lagoon.GetContent()
+	content1, e := lagoon.Content()
 	assert.Nil(t, e)
 	assert.Equal(t, true, len(content1) > 0)
 
@@ -284,7 +284,7 @@ func TestSerialization(t *testing.T) {
 	lagoon, e = engine.CreateFromContent(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), content1)
 	assert.Nil(t, e)
 	// Content deserialization
-	content2, e := lagoon.GetContent()
+	content2, e := lagoon.Content()
 	assert.Nil(t, e)
 	assert.Equal(t, true, len(content2) > 0)
 

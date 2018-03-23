@@ -8,25 +8,6 @@ package engine
 
 
 // ----------------------------------------------------
-// Interface Lagoon
-// ----------------------------------------------------
-type Lagoon interface {
-	
-	
-	GetEnvironment() Environment
-	GetContent() ([]byte, error)	
-}
-// ----------------------------------------------------
-// Implementation of Interface "Lagoon"
-// ----------------------------------------------------
-func (e *holder) GetEnvironment() Environment{
-	return e.env
-}	
-
-
-
-
-// ----------------------------------------------------
 // Interface Version
 // ----------------------------------------------------
 type Version interface {
