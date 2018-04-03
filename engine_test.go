@@ -1,17 +1,32 @@
-package engine_test
+package engine
 
 import (
-	"bytes"
 	"log"
 	"os"
 	"testing"
 
-	"github.com/lagoon-platform/engine"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateEngine(t *testing.T) {
-	lagoon, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/lagoon.yaml")
+func TestCreateEngineFromHttp(t *testing.T) {
+	_, e := Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "https://raw.githubusercontent.com/lagoon-platform/engine/master/testdata/complete_descriptor.yaml")
+
+	// no error occurred
+	assert.Nil(t, e)
+}
+
+func TestCreateEngineFromBadHttp(t *testing.T) {
+	_, e := Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "https://raw.githubusercontent.com/lagoon-platform/engine/master/testdata/DUMMY.yaml")
+
+	// an error occurred
+	assert.NotNil(t, e)
+
+	// the error code should be 404
+	assert.Equal(t, "HTTP Error getting the environment descriptor , error code 404", e.Error())
+}
+
+func TestCreateEngineFromLocal(t *testing.T) {
+	lagoon, e := Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/lagoon.yaml")
 	assert.Nil(t, e) // no error occurred
 
 	env := lagoon.Environment()
@@ -22,13 +37,12 @@ func TestCreateEngine(t *testing.T) {
 }
 
 func TestCreateEngineComplete(t *testing.T) {
-	lagoon, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/complete_descriptor.yaml")
+	lagoon, e := Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/complete_descriptor.yaml")
 	assert.Nil(t, e)
 
 	env := lagoon.Environment()
 	assert.Equal(t, "name_value", env.GetName())
 	assert.Equal(t, "description_value", env.GetDescription())
-	assert.Equal(t, "baselocation_value", env.GetBaseLocation())
 
 	// Environment Version
 	v, e := env.GetVersion()
@@ -268,27 +282,4 @@ func TestCreateEngineComplete(t *testing.T) {
 	assert.NotNil(t, labels)
 	assert.Equal(t, 3, len(labels.AsStrings()))
 	assert.Equal(t, true, labels.Contains("task2_label1", "task2_label2", "task2_label3"))
-
-}
-
-func TestSerialization(t *testing.T) {
-	lagoon, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "testdata/complete_descriptor.yaml")
-	assert.Nil(t, e)
-
-	// Content deserialization
-	content1, e := lagoon.Content()
-	assert.Nil(t, e)
-	assert.Equal(t, true, len(content1) > 0)
-
-	// Content serialization
-	lagoon, e = engine.CreateFromContent(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), content1)
-	assert.Nil(t, e)
-	// Content deserialization
-	content2, e := lagoon.Content()
-	assert.Nil(t, e)
-	assert.Equal(t, true, len(content2) > 0)
-
-	// Check that the creation from a location and from a serialized content
-	// produces the same result.
-	assert.Equal(t, 0, bytes.Compare(content1, content2))
 }

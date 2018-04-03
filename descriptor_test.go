@@ -1,27 +1,18 @@
-package engine_test
+package engine
 
 import (
-	"log"
-	"os"
 	"testing"
 
-	"github.com/lagoon-platform/engine"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHttpGetDescriptor(t *testing.T) {
-	_, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "https://raw.githubusercontent.com/lagoon-platform/engine/master/testdata/complete_descriptor.yaml")
-
-	// no error occurred
-	assert.Nil(t, e)
+func TestLabelCreate(t *testing.T) {
+	assert.Equal(t, []string{"label1", "label2"}, createLabels("label1", "label2").AsStrings())
 }
 
-func TestHttpGetNoDescriptor(t *testing.T) {
-	_, e := engine.Create(log.New(os.Stdout, "TEST: ", log.Ldate|log.Ltime), "https://raw.githubusercontent.com/lagoon-platform/engine/master/testdata/DUMMY.yaml")
-
-	// an error occurred
-	assert.NotNil(t, e)
-
-	// the error code should be 404
-	assert.Equal(t, "HTTP Error getting the environment descriptor , error code 404", e.Error())
+func TestLabelContains(t *testing.T) {
+	f := createLabels("label1", "label2")
+	assert.Equal(t, true, f.Contains("label1"))
+	assert.Equal(t, true, f.Contains("label2"))
+	assert.Equal(t, false, f.Contains("label3"))
 }

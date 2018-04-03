@@ -14,22 +14,15 @@ import (
 )
 
 type hookDef struct {
+	itemDef
 	Before []string
 	After  []string
 }
 
-type labelsDef struct {
-	Labels []string
-}
-
-type paramsDef struct {
-	Params map[string]string
-}
-
 type platformDef struct {
-	Version  string
-	Registry string
-	Proxy    struct {
+	itemDef
+	Version string
+	Proxy struct {
 		Http    string
 		Https   string
 		NoProxy string `yaml:"noProxy"`
@@ -37,54 +30,47 @@ type platformDef struct {
 }
 
 type providerDef struct {
-	name string          `yaml:"-"`
-	desc *environmentDef `yaml:"-"`
-
+	namedItemDef
 	labelsDef `yaml:",inline"`
 	paramsDef `yaml:",inline"`
 }
 
 type nodeSetDef struct {
-	name string          `yaml:"-"`
-	desc *environmentDef `yaml:"-"`
-
+	namedItemDef
 	labelsDef `yaml:",inline"`
 
 	Provider struct {
 		paramsDef `yaml:",inline"`
-		Name      string
+		Name string
 	}
 	Instances int
-	Hooks     struct {
+	Hooks struct {
 		Provision hookDef
 		Destroy   hookDef
 	}
 }
 
 type stackDef struct {
-	name string          `yaml:"-"`
-	desc *environmentDef `yaml:"-"`
-
+	namedItemDef
 	labelsDef `yaml:",inline"`
 
 	Repository string
 	Version    string
 	DeployOn   []string `yaml:"deployOn"`
-	Hooks      struct {
+	Hooks struct {
 		Deploy   hookDef
 		Undeploy hookDef
 	}
 }
 
 type taskDef struct {
-	name      string          `yaml:"-"`
-	desc      *environmentDef `yaml:"-"`
+	namedItemDef
 	labelsDef `yaml:",inline"`
 
 	Playbook string
 	Cron     string
 	RunOn    []string `yaml:"runOn"`
-	Hooks    struct {
+	Hooks struct {
 		Execute hookDef
 	}
 }
@@ -93,10 +79,9 @@ type environmentDef struct {
 	labelsDef `yaml:",inline"`
 
 	// Global attributes
-	Name         string
-	Description  string
-	Version      string
-	BaseLocation string
+	Name        string
+	Description string
+	Version     string
 
 	// Imports
 	Imports []string
@@ -130,47 +115,33 @@ type environmentDef struct {
 	}
 }
 
-func parseDescriptor(h holder, location string) (desc environmentDef, err error) {
-	var content []byte
-	desc.BaseLocation, content, err = readDescriptor(h, location)
+func parseDescriptor(ctx context, location string) (env environmentDef, err error) {
+	baseLocation, content, err := readDescriptor(ctx, location)
 	if err != nil {
 		return
 	}
 
-	err = yaml.Unmarshal(content, &desc)
-	if err != nil {
-		return
-	}
-	err = processImports(h, &desc)
+	err = yaml.Unmarshal(content, &env)
 	if err != nil {
 		return
 	}
 
-	desc.providers = CreateProviders(&desc)
-	desc.nodes = CreateNodes(&desc)
-	desc.stacks = CreateStacks(&desc)
-	desc.tasks = CreateTasks(&desc)
+	err = processImports(ctx, baseLocation, &env)
+	if err != nil {
+		return
+	}
+
+	env.providers = createProviders(&env)
+	env.nodes = createNodes(&env)
+	env.stacks = createStacks(&env)
+	env.tasks = createTasks(&env)
 
 	return
 }
 
-func parseContent(h holder, content []byte) (desc environmentDef, err error) {
-	err = yaml.Unmarshal(content, &desc)
-	if err != nil {
-		return
-	}
-
-	desc.providers = CreateProviders(&desc)
-	desc.nodes = CreateNodes(&desc)
-	desc.stacks = CreateStacks(&desc)
-	desc.tasks = CreateTasks(&desc)
-
-	return
-}
-
-func readDescriptor(h holder, location string) (base string, content []byte, err error) {
+func readDescriptor(ctx context, location string) (base string, content []byte, err error) {
 	if strings.Index(location, "http") == 0 {
-		h.logger.Println("Loading URL", location)
+		ctx.logger.Println("Loading URL", location)
 
 		_, err = url.Parse(location)
 		if err != nil {
@@ -194,7 +165,7 @@ func readDescriptor(h holder, location string) (base string, content []byte, err
 		i := strings.LastIndex(location, "/")
 		base = location[0 : i+1]
 	} else {
-		h.logger.Println("Loading file", location)
+		ctx.logger.Println("Loading file", location)
 		var file *os.File
 		file, err = os.Open(location)
 		if err != nil {
@@ -215,19 +186,20 @@ func readDescriptor(h holder, location string) (base string, content []byte, err
 	return
 }
 
-func processImports(h holder, desc *environmentDef) error {
-	if len(desc.Imports) > 0 {
-		h.logger.Println("Processing imports", desc.Imports)
-		for _, val := range desc.Imports {
-			importedDesc, err := parseDescriptor(h, desc.BaseLocation+val)
+func processImports(ctx context, baseLocation string, env *environmentDef) error {
+	if len(env.Imports) > 0 {
+		ctx.logger.Println("Processing imports", env.Imports)
+		for _, val := range env.Imports {
+			ctx.logger.Println("Processing import", baseLocation+val)
+			importedDesc, err := parseDescriptor(ctx, baseLocation+val)
 			if err != nil {
 				return err
 			}
-			mergo.Merge(desc, importedDesc)
+			mergo.Merge(env, importedDesc)
 		}
-		desc.Imports = nil
+		env.Imports = nil
 	} else {
-		h.logger.Println("No import to process")
+		ctx.logger.Println("No import to process")
 	}
 	return nil
 }
@@ -246,4 +218,127 @@ func mapMultipleContains(m namedMap, candidates []string) bool {
 		}
 	}
 	return true
+}
+
+// ----------------------------------------------------
+// Item
+// ----------------------------------------------------
+
+type Item interface {
+	Root() *environmentDef
+}
+
+type NamedItem interface {
+	Item
+	Name() string
+}
+
+type itemDef struct {
+	root *environmentDef `yaml:"-"`
+}
+
+func (i *itemDef) Root() *environmentDef {
+	return i.root;
+}
+
+type namedItemDef struct {
+	itemDef
+	name string `yaml:"-"`
+}
+
+func (i *namedItemDef) Name() string {
+	return i.name
+}
+
+// ----------------------------------------------------
+// Labels
+// ----------------------------------------------------
+
+type Labels interface {
+	Contains(...string) bool
+	AsStrings() []string
+}
+
+type labelsDef struct {
+	Labels []string
+}
+
+func createLabels(values ...string) Labels {
+	ret := labelsDef{make([]string, len(values))}
+	copy(ret.Labels, values)
+	return ret
+}
+
+func (l labelsDef) Contains(candidates ...string) bool {
+	for _, l1 := range candidates {
+		contains := false
+		for _, l2 := range l.Labels {
+			if l1 == l2 {
+				contains = true
+			}
+		}
+		if !contains {
+			return false
+		}
+	}
+	return true
+}
+
+func (l labelsDef) AsStrings() []string {
+	ret := make([]string, len(l.Labels))
+	copy(ret, l.Labels)
+	return ret
+}
+
+// ----------------------------------------------------
+// Parameters
+// ----------------------------------------------------
+
+type Parameters interface {
+	AsMap() map[string]string
+}
+
+type paramsDef struct {
+	Params map[string]string
+}
+
+func createParameters(p map[string]string) Parameters {
+	ret := paramsDef{map[string]string{}}
+	for k, v := range p {
+		ret.Params[k] = v
+	}
+	return ret
+}
+
+func (p paramsDef) AsMap() map[string]string {
+	ret := map[string]string{}
+	for k, v := range p.Params {
+		ret[k] = v
+	}
+	return ret
+}
+
+// ----------------------------------------------------
+// Nodes
+// ----------------------------------------------------
+
+type nodes struct {
+	values namedMap
+}
+
+func createNodes(env *environmentDef) nodes {
+	ret := nodes{namedMap{}}
+	for k, v := range env.Nodes {
+		v.name = k
+		v.root = env
+		ret.values[k] = v
+	}
+	return ret
+}
+
+func (e nodes) GetNode(candidate string) (NodeDescription, bool) {
+	if v, ok := e.values[candidate]; ok {
+		return v.(NodeDescription), ok
+	}
+	return nil, false
 }

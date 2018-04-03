@@ -4,7 +4,7 @@ type providers struct {
 	values namedMap
 }
 
-func CreateProviders(desc *environmentDef) providers {
+func createProviders(desc *environmentDef) providers {
 	ret := providers{namedMap{}}
 	for k, v := range desc.Providers {
 		v.name = k
@@ -14,8 +14,8 @@ func CreateProviders(desc *environmentDef) providers {
 	return ret
 }
 
-func (l providers) GetProvider(candidate string) (ProviderDescription, bool) {
-	if v, ok := l.values[candidate]; ok {
+func (e providers) GetProvider(candidate string) (ProviderDescription, bool) {
+	if v, ok := e.values[candidate]; ok {
 		return v.(ProviderDescription), ok
 	}
 	return nil, false

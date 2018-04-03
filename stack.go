@@ -4,7 +4,7 @@ type stacks struct {
 	values namedMap
 }
 
-func CreateStacks(desc *environmentDef) stacks {
+func createStacks(desc *environmentDef) stacks {
 	ret := stacks{namedMap{}}
 	for k, v := range desc.Stacks {
 		v.name = k
@@ -14,8 +14,8 @@ func CreateStacks(desc *environmentDef) stacks {
 	return ret
 }
 
-func (l stacks) GetStack(candidate string) (StackDescription, bool) {
-	if v, ok := l.values[candidate]; ok {
+func (e stacks) GetStack(candidate string) (StackDescription, bool) {
+	if v, ok := e.values[candidate]; ok {
 		return v.(StackDescription), ok
 	}
 	return nil, false

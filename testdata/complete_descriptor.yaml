@@ -1,7 +1,6 @@
 name: name_value
 description: description_value
 version: 1.2.3
-baselocation: baselocation_value
 labels:
   - root_label1
   - root_label2

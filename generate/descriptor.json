@@ -1,20 +1,11 @@
 [
-   {
-      "name":"Version",
-      "methods":[
-         {"name":"Major", "returns":"int", "implemented_by":[{"types":["version"], "attribute":"major"}]},
-         {"name":"Minor", "returns":"int", "implemented_by":[{"types":["version"],"attribute":"minor"}]},
-         {"name":"Micro", "returns":"int", "implemented_by":[{"types":["version"],"attribute":"micro"}]},
-         {"name":"AsString", "implemented_by":[{"types":["version"],"attribute":"full"}]}
-      ]
-   },{
+  {
       "name":"Environment",
       "inherited":["Labeled"],
       "methods":[
          {"name":"GetVersion", "returns":"(Version, error)","implemented_by":[{"types":["environmentDef"],"impl":"return CreateVersion(e.Version)"}]},
          {"name":"GetName","implemented_by":[{"types":["environmentDef"],"attribute":"Name"}]},
          {"name":"GetDescription","implemented_by":[{"types":["environmentDef"],"attribute":"Description"}]},
-         {"name":"GetBaseLocation","implemented_by":[{"types":["environmentDef"],"attribute":"BaseLocation"}]},
          {"returns":"LagoonPlatform","implemented_by":[{"types":["environmentDef"],"attribute":"Lagoon"}]},
          {"returns":"ProviderDescriptions","implemented_by":[{"types":["environmentDef"],"attribute":"providers"}]},
          {"name":"CountProviders", "returns":"int","implemented_by":[{"types":["environmentDef"],"impl":"return len(e.Providers)"}]},
@@ -52,16 +43,9 @@
          {
             "returns":"Labels",
             "implemented_by":[
-               {"types":["providerDef","nodeSetDef","stackDef","taskDef","environmentDef"],"impl":"return CreateLabels(e.labelsDef.Labels...)"}
+               {"types":["providerDef","nodeSetDef","stackDef","taskDef","environmentDef"],"impl":"return createLabels(e.labelsDef.Labels...)"}
             ]
          }
-      ]
-   },
-   {
-      "name":"Labels",
-      "methods":[
-         {"name":"Contains", "parameters":"...string","returns":"bool"},
-         {"name":"AsStrings","returns":"[]string"}
       ]
    },
    {
@@ -70,16 +54,10 @@
          {
             "returns":"Parameters",
             "implemented_by":[
-				{"types":["providerDef"],"impl":"return CreateParameters(e.paramsDef.Params)"},
-				{"types":["nodeSetDef"],"impl":"return CreateParameters(e.Provider.paramsDef.Params)"}
+				{"types":["providerDef"],"impl":"return createParameters(e.paramsDef.Params)"},
+				{"types":["nodeSetDef"],"impl":"return createParameters(e.Provider.paramsDef.Params)"}
             ]
          }
-      ]
-   },
-   {
-      "name":"Parameters",
-      "methods":[
-         {"name":"AsMap","returns":"map[string]string"}
       ]
    },
    {

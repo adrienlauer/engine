@@ -4,7 +4,7 @@ type tasks struct {
 	values namedMap
 }
 
-func CreateTasks(desc *environmentDef) tasks {
+func createTasks(desc *environmentDef) tasks {
 	ret := tasks{namedMap{}}
 	for k, v := range desc.Tasks {
 		v.name = k
@@ -14,8 +14,8 @@ func CreateTasks(desc *environmentDef) tasks {
 	return ret
 }
 
-func (l tasks) GetTask(candidate string) (TaskDescription, bool) {
-	if v, ok := l.values[candidate]; ok {
+func (e tasks) GetTask(candidate string) (TaskDescription, bool) {
+	if v, ok := e.values[candidate]; ok {
 		return v.(TaskDescription), ok
 	}
 	return nil, false

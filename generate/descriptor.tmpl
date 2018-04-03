@@ -16,9 +16,9 @@ type {{.Name}} interface {
 	{{range .Methods}}
 	{{.Signature false}}{{end}}	
 }
-{{if .HasImplentations}}// ----------------------------------------------------
+{{if .HasImplementations}}// ----------------------------------------------------
 // Implementation of Interface "{{.Name}}"
-// ----------------------------------------------------{{end}}{{range .Methods}}{{$m := .}}{{range .Implentations}}{{$im := .}}{{range .Types}}
+// ----------------------------------------------------{{end}}{{range .Methods}}{{$m := .}}{{range .Implementations}}{{$im := .}}{{range .Types}}
 {{.ImplSignature $m $im}}{
 	{{.Body $im}}
 }	

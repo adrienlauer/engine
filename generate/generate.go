@@ -9,7 +9,6 @@ import (
 type GenString string
 
 type Interface struct {
-
 	// The name of the generated interface
 	Name string `json:"name"`
 
@@ -21,7 +20,6 @@ type Interface struct {
 }
 
 type Method struct {
-
 	// The type returned by the method ( if missing the returned type will be "string" )
 	// The returned type will be processed "as is".
 	// It should include parentheses in case of multiple returns.
@@ -40,11 +38,10 @@ type Method struct {
 	Params string `json:"parameters"`
 
 	// The list of supported implementation to generate
-	Implentations []Implementation `json:"implemented_by"`
+	Implementations []Implementation `json:"implemented_by"`
 }
 
 type Implementation struct {
-
 	// The types implementing the interface
 	//
 	// The type will be named "e" so if you provide a custom implementation
@@ -58,8 +55,8 @@ type Implementation struct {
 	// The attribute(s), of the type implementing the interface, allowing to
 	// get the value returned by the implementation:
 	//
-	// If specified the implentation body will be : "return e + ".SubType"+ ".Att"
-	// If not the implentation body will be : "return e.Att"
+	// If specified the implementation body will be : "return e + ".SubType"+ ".Att"
+	// If not the implementation body will be : "return e.Att"
 	//
 	// The SubType must start with a "."
 	// Ex :
@@ -127,9 +124,9 @@ func (t GenString) Body(i Implementation) string {
 	return r
 }
 
-func (i Interface) HasImplentations() bool {
+func (i Interface) HasImplementations() bool {
 	for _, vm := range i.Methods {
-		if len(vm.Implentations) > 0 {
+		if len(vm.Implementations) > 0 {
 			return true
 		}
 	}
@@ -137,7 +134,7 @@ func (i Interface) HasImplentations() bool {
 }
 
 func main() {
-	r, err := os.Open("generate/engine_api.json")
+	r, err := os.Open("generate/descriptor.json")
 	if err != nil {
 		panic(err)
 	}
@@ -151,13 +148,13 @@ func main() {
 		panic(err)
 	}
 
-	w, err := os.Create("engine_api.generated.go")
+	w, err := os.Create("descriptor.generated.go")
 	if err != nil {
 		panic(err)
 	}
 	defer w.Close()
 
-	t, err := template.ParseFiles("generate/engine_api.tmpl")
+	t, err := template.ParseFiles("generate/descriptor.tmpl")
 	if err != nil {
 		panic(err)
 	}
