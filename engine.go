@@ -1,9 +1,9 @@
 package engine
 
 import (
-	"log"
 	"github.com/lagoon-platform/model"
-	"path"
+	"log"
+	"path/filepath"
 )
 
 type Lagoon interface {
@@ -25,7 +25,12 @@ type context struct {
 // Create creates an environment descriptor based on the provider location.
 //
 // The location can be an URL over http or https or even a file system location.
-func Create(logger *log.Logger, baseDir string, repository string, version string) (lagoon Lagoon, err error) {
+func Create(logger *log.Logger, baseDir string, repository string, version string) (Lagoon, error) {
+	err := ensureWritableDirectory(baseDir)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx := context{logger: logger, baseDir: baseDir}
 
 	// Create component manager
@@ -34,7 +39,7 @@ func Create(logger *log.Logger, baseDir string, repository string, version strin
 	// Create, register and fetch the main component
 	mainComp, err := model.CreateDetachedComponent(repository, version)
 	if err != nil {
-		return
+		return nil, err
 	}
 	ctx.componentManager.RegisterComponent(mainComp)
 	ctx.componentManager.Ensure()
@@ -42,17 +47,14 @@ func Create(logger *log.Logger, baseDir string, repository string, version strin
 	// Parse the environment descriptor from the main component
 	envPath, err := ctx.componentManager.ComponentPath(mainComp.Id)
 	if err != nil {
-		return
+		return nil, err
 	}
-	ctx.environment, err, _ = model.Parse(logger, path.Join(envPath, DescriptorFileName))
+	ctx.environment, err, _ = model.Parse(logger, filepath.Join(envPath, DescriptorFileName))
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	// Use context as Lagoon facade
-	lagoon = &ctx
-
-	return
+	return &ctx, nil
 }
 
 func (c *context) Environment() model.Environment {

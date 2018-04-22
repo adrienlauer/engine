@@ -1,0 +1,25 @@
+name: test-env
+description: This is my test env
+version: 1.2.3
+
+components:
+  lagoon-platform/aws-provider: master
+  lagoon-platform/some-stack: master
+
+providers:
+  aws:
+    repository: lagoon-platform/aws-provider
+
+nodes:
+  someNodes:
+    instances: 3
+    provider:
+      name: aws
+    labels:
+      - test
+
+stacks:
+  someStack:
+    repository: lagoon-platform/some-stack
+    deployOn:
+      - test

@@ -1,5 +1,6 @@
 package engine
 
 const (
-	DescriptorFileName string = "lagoon.yaml"
+	DescriptorFileName = "lagoon.yaml"
+	ComponentsSubdir   = "components"
 )

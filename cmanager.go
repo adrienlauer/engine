@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"log"
-	"github.com/lagoon-platform/model"
 	"errors"
+	"github.com/lagoon-platform/model"
+	"log"
+	"path/filepath"
 )
 
 type ComponentManager interface {
@@ -16,13 +17,15 @@ type ComponentManager interface {
 
 type componentManager struct {
 	logger     *log.Logger
-	directory  string
+	path       string
 	components map[string]model.Component
 	paths      map[string]string
 }
 
 func createComponentManager(logger *log.Logger, baseDir string) ComponentManager {
-	return &componentManager{logger: logger, components: make(map[string]model.Component)}
+	componentsPath := filepath.Join(baseDir, ComponentsSubdir)
+	ensureWritableDirectory(componentsPath)
+	return &componentManager{logger: logger, path: componentsPath, components: make(map[string]model.Component)}
 }
 
 func (cm *componentManager) RegisterComponent(c model.Component) error {
