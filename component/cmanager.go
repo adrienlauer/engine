@@ -20,6 +20,7 @@ type ScmHandler interface {
 
 type ComponentManager interface {
 	RegisterComponent(c model.Component)
+	MatchingDirectories(dirName string) []string
 	ComponentPath(cId string) string
 	ComponentsPaths() map[string]string
 	SaveComponentsPaths(log *log.Logger, e model.Environment, dest util.FolderPath) error
@@ -43,11 +44,11 @@ type fileMap struct {
 
 func CreateComponentManager(logger *log.Logger, environment *model.Environment, baseDir string) ComponentManager {
 	return &context{
-		logger:     logger,
+		logger:      logger,
 		environment: environment,
-		directory:  filepath.Join(baseDir, "components"),
-		components: map[string]model.Component{},
-		paths:      map[string]string{}}
+		directory:   filepath.Join(baseDir, "components"),
+		components:  map[string]model.Component{},
+		paths:       map[string]string{}}
 }
 
 func (cm *context) RegisterComponent(c model.Component) {
@@ -61,6 +62,17 @@ func (cm *context) ComponentPath(id string) string {
 
 func (cm *context) ComponentsPaths() map[string]string {
 	return cm.paths
+}
+
+func (cm *context) MatchingDirectories(dirName string) []string {
+	result := make([]string, 0, 10)
+	for cPath := range cm.paths {
+		subDir := filepath.Join(cm.directory, cPath, dirName)
+		if _, err := os.Stat(subDir); err == nil {
+			result = append(result, subDir)
+		}
+	}
+	return result
 }
 
 func (cm *context) SaveComponentsPaths(log *log.Logger, e model.Environment, dest util.FolderPath) error {
@@ -96,7 +108,7 @@ func (cm *context) Ensure() error {
 			cm.logger.Printf("Merging component " + cName + " descriptor")
 			cm.environment.Merge(cEnv)
 		}
-		cm.logger.Printf("Paths added: \"%s=%s\"", c.Id, cPath)
+		cm.logger.Printf("Component %s has been downloaded in %s", c.Id, cPath)
 		c := cm.components[c.Id]
 		cm.paths[c.Id] = cPath
 	}
