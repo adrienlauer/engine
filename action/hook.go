@@ -23,68 +23,73 @@ type (
 )
 
 //RunHookBefore Runs the hooks defined to be executed before a task.
-func runHookBefore(rC *runtimeContext, r *StepResults, h model.Hook, ctx hookContext, cl Cleanup) {
-	runHooks(h.Before, rC, r, ctx, cl)
+func runHookBefore(rC *runtimeContext, r *StepResults, h model.Hook, ctx hookContext, cl Cleanup) StepResult {
+	return runHookTasks(rC, r, h.Before, ctx, cl)
 }
 
 //RunHookAfter Runs the hooks defined to be executed after a task.
-func runHookAfter(rC *runtimeContext, r *StepResults, h model.Hook, ctx hookContext, cl Cleanup) {
-	runHooks(h.After, rC, r, ctx, cl)
+func runHookAfter(rC *runtimeContext, r *StepResults, h model.Hook, ctx hookContext, cl Cleanup) StepResult {
+	return runHookTasks(rC, r, h.After, ctx, cl)
 }
 
-func runHooks(hooks []model.TaskRef, rC *runtimeContext, r *StepResults, ctx hookContext, cl Cleanup) {
-	for i, hook := range hooks {
+func runHookTasks(rC *runtimeContext, r *StepResults, tasks []model.TaskRef, ctx hookContext, cl Cleanup) StepResult {
+	for i, hook := range tasks {
 		repName := fmt.Sprintf("%s_%s_hook_%s_%s_%s_%d", ctx.action, ctx.target.DescName(), ctx.hookOnwer, ctx.hookName, hook.HookLocation, i)
-		sc := InitHookStepResult(folderAsMessage(repName), ctx.target, cl)
-		ef, ko := createChildExchangeFolder(rC.lC.Ef().Input, repName, &sc)
+		stepResult := InitHookStepResult(fmt.Sprintf("Running %s tasks", hook.HookLocation), ctx.target, cl)
+
+		ef, ko := createChildExchangeFolder(rC.lC.Ef().Input, repName, &stepResult)
 		if ko {
-			r.Add(sc)
-			continue
+			return stepResult
 		}
 
 		t, err := hook.Resolve()
 		if err != nil {
-			FailsOnCode(&sc, err, fmt.Sprintf("An error occurred resolving the task"), nil)
-			r.Add(sc)
-			continue
+			FailsOnCode(&stepResult, err, fmt.Sprintf("An error occurred resolving the task"), nil)
+			return stepResult
 		}
 
 		bp := ctx.baseParam.Copy()
-		bp.AddNamedMap("hook_param", t.Parameters)
+		bp.AddNamedMap("params", t.Parameters)
 
-		if ko := saveBaseParams(bp, ef.Input, &sc); ko {
-			r.Add(sc)
-			continue
+		if ko := saveBaseParams(bp, ef.Input, &stepResult); ko {
+			return stepResult
 		}
 
 		exv := ansible.BuildExtraVars("", ef.Input, ef.Output, ctx.buffer)
-
-		runTask(rC, t, ctx.target, sc, r, ef, exv, ctx.envVar)
-		r.Add(fconsumeHookResult(rC, ctx.target, repName, ef))
+		r.Add(runTask(rC, t, exv, ctx.envVar))
+		r.Add(consumeHookResult(rC, ctx.target, repName, ef))
 	}
 }
 
-func fconsumeHookResult(rC *runtimeContext, target model.Describable, repName string, ef util.ExchangeFolder) StepResult {
-	sc := InitCodeStepResult("Consuming the hook result", target, NoCleanUpRequired)
-	rC.lC.Log().Printf("Consume the hook result %s", target.DescName())
+func consumeHookResult(rC *runtimeContext, target model.Describable, repName string, ef util.ExchangeFolder) StepResult {
+	stepResult := InitCodeStepResult("Consuming the hook result", target, NoCleanUpRequired)
 	efOut := ef.Output
 	buffer, err := ansible.GetBuffer(efOut, rC.lC.Log(), "hook:"+repName)
 	if err != nil {
-		FailsOnCode(&sc, err, fmt.Sprintf("An error occurred getting the buffer"), nil)
-		return sc
+		FailsOnCode(&stepResult, err, fmt.Sprintf("An error occurred getting the buffer"), nil)
+		return stepResult
 	}
 	// Keep a reference on the buffer based on the output folder
 	rC.buffer[efOut.Path()] = buffer
-	return sc
+	return stepResult
 }
 
-func runTask(rC *runtimeContext, task model.Task, target model.Describable, sc StepResult, r *StepResults, ef util.ExchangeFolder, exv ansible.ExtraVars, env ansible.EnvVars) {
+func runTask(rC *runtimeContext, task model.Task, exv ansible.ExtraVars, env ansible.EnvVars) StepResult {
+	stepResult := InitCodeStepResult("Running task", task, NoCleanUpRequired)
+
+	// Update the runtime info
+	rC.cM.TemplateContext().RunTimeInfo.SetTarget(task)
+	defer rC.cM.TemplateContext().RunTimeInfo.Clear()
+
+	// Make the task usable
 	usable, err := rC.cM.Use(task)
 	if err != nil {
-		FailsOnCode(&sc, err, "An error occurred getting the usable task", nil)
+		FailsOnCode(&stepResult, err, "An error occurred getting the usable task", nil)
+		return stepResult
 	}
 	defer usable.Release()
 
+	// Execute the playbook
 	code, err := rC.aM.Execute(usable, task.Playbook, exv, env)
 	if err != nil {
 		pfd := playBookFailureDetail{
@@ -92,11 +97,11 @@ func runTask(rC *runtimeContext, task model.Task, target model.Describable, sc S
 			Component: task.ComponentName(),
 			Code:      code,
 		}
-		FailsOnPlaybook(&sc, err, "An error occurred executing the playbook", pfd)
-		r.Add(sc)
-		return
+		FailsOnPlaybook(&stepResult, err, "An error occurred executing the playbook", pfd)
+		return stepResult
 	}
-	r.Add(sc)
+
+	return stepResult
 }
 
 func folderAsMessage(s string) string {
